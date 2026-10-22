@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f4f6f3" />
+    <title>世科报价系统</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#top" aria-label="世科报价系统首页">
+          <span class="brand-mark">SK</span>
+          <span class="brand-name">世科<span>报价系统</span></span>
+        </a>
+        <div class="topbar-right">
+          <span class="saved-status"><i></i> 本机自动保存</span>
+          <button class="icon-button" id="resetButton" type="button" title="恢复表格中的初始参数" aria-label="恢复初始参数">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.8 11a8.2 8.2 0 1 1 .8 4.5M3.8 5.8V11h5.3" /></svg>
+            <span>恢复初始值</span>
+          </button>
+        </div>
+      </header>
+
+      <main id="top">
+        <section class="page-heading">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-line"></span> QUOTATION WORKSPACE</div>
+            <h1>产品报价</h1>
+            <p>从产品规格和物料单价开始，实时拆解单袋成本并生成报价参考。</p>
+          </div>
+          <div class="product-switch" role="tablist" aria-label="选择产品">
+            <button class="product-tab active" type="button" role="tab" aria-selected="true" data-product="slider">
+              <span class="tab-dot"></span> 滑块袋 <small>已配置</small>
+            </button>
+            <button class="product-tab disabled" type="button" role="tab" aria-selected="false" aria-disabled="true" title="等待 OPP 袋成本公式">
+              OPP 袋 <small>待补资料</small>
+            </button>
+          </div>
+        </section>
+
+        <div class="notice" role="note">
+          <span class="notice-icon">i</span>
+          <p>当前成本根据已提供的滑块袋公式计算，包含原料、包装物、印刷和打胶成本；暂未计入人工、水电、房租及其他制造费用。</p>
+          <span class="notice-source">按现有资料试算</span>
+        </div>
+
+        <div class="work-grid">
+          <section class="inputs-panel panel" aria-labelledby="inputsTitle">
+            <div class="panel-heading">
+              <div>
+                <span class="section-kicker">01 / INPUTS</span>
+                <h2 id="inputsTitle">产品与物料参数</h2>
+              </div>
+              <span class="unit-badge">尺寸：mm · 单价：元</span>
+            </div>
+
+            <form id="quoteForm" autocomplete="off">
+              <section class="input-section">
+                <div class="subheading">
+                  <span class="section-number">A</span>
+                  <div><h3>产品规格</h3><p>尺寸及包装数量；飞边、拉链克重和包装工艺设为默认值</p></div>
+                </div>
+                <div class="field-grid four-col">
+                  <label class="field"><span>袋长 <em>mm</em></span><input data-field="lengthMm" type="number" min="0.01" step="1" value="270" /></label>
+                  <label class="field"><span>袋宽 <em>mm</em></span><input data-field="widthMm" type="number" min="0.01" step="1" value="350" /></label>
+                  <label class="field"><span>厚度 <em>mm</em></span><input data-field="thicknessMm" type="number" min="0.001" step="0.01" value="0.06" /></label>
+                  <label class="field"><span>插底 <em>mm</em></span><input data-field="bottomMm" type="number" min="0" step="1" value="20" /></label>
+                  <label class="field"><span>长度飞边 <em>默认 · mm</em></span><input data-field="flyEdgeMm" type="number" min="0" step="1" value="10" /></label>
+                  <label class="field"><span>拉链条米克重 <em>默认 · g/m</em></span><input data-field="zipperGramsPerMeter" type="number" min="0" step="0.1" value="8.5" /></label>
+                  <label class="field"><span>每盒入数 <em>个</em></span><input data-field="bagsPerBox" type="number" min="1" step="1" value="8" /></label>
+                  <label class="field"><span>每箱盒数 <em>盒</em></span><input data-field="boxesPerCarton" type="number" min="1" step="1" value="80" /></label>
+                  <label class="field"><span>每桶可印数量 <em>个</em></span><input data-field="inkBagsPerDrum" type="number" min="1" step="1000" value="160000" /></label>
+                  <label class="field"><span>包装方式 <em>默认项</em></span><input data-choice-field="packagingMethod" type="text" value="盒装" /></label>
+                  <label class="field"><span>拉链颜色 <em>默认项</em></span><input data-choice-field="zipperColor" type="text" value="瓷白" /></label>
+                </div>
+                <div class="formula-hint"><span class="formula-mark">ƒx</span> 袋本体展开长度 = 袋长 + 插底；不含飞边重量按展开尺寸计算，吹膜重量再计入飞边。</div>
+                <div class="formula-hint"><span class="formula-mark">i</span> 包装成本按盒装分摊；拉链颜色为记录项，成本沿用默认色母比例和单价。</div>
+              </section>
+
+              <section class="input-section">
+                <div class="subheading">
+                  <span class="section-number">B</span>
+                  <div><h3>原料配比</h3><p>红色标注字段设为默认配方，可按实际配方调整</p></div>
+                </div>
+                <div class="recipe-layout">
+                  <div class="recipe-card">
+                    <div class="recipe-title"><span>袋本体混料</span><b id="bodyRatioStatus">合计 100%</b></div>
+                    <div class="field-grid two-col">
+                      <label class="field"><span>LDPE <em>%</em></span><input data-field="bodyLdpePercent" type="number" min="0" max="100" step="0.1" value="33.3333" /></label>
+                      <label class="field"><span>LLDPE <em>%</em></span><input data-field="bodyLldpePercent" type="number" min="0" max="100" step="0.1" value="66.6667" /></label>
+                    </div>
+                  </div>
+                  <div class="recipe-card">
+                    <div class="recipe-title"><span>拉链条配方</span><b>色母 + 树脂</b></div>
+                    <div class="field-grid two-col zipper-fields">
+                      <label class="field"><span>色母比例 <em>%</em></span><input data-field="zipperColorPercent" type="number" min="0" max="100" step="0.1" value="2" /></label>
+                      <label class="field"><span>LDPE <em>份</em></span><input data-field="zipperLdpeParts" type="number" min="0" step="1" value="100" /></label>
+                      <label class="field"><span>LLDPE <em>份</em></span><input data-field="zipperLldpeParts" type="number" min="0" step="1" value="20" /></label>
+                      <label class="field"><span>MLLDPE <em>份</em></span><input data-field="zipperMlldpeParts" type="number" min="0" step="1" value="10" /></label>
+                      <label class="field"><span>HDPE <em>份</em></span><input data-field="zipperHdpeParts" type="number" min="0" step="1" value="5" /></label>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="input-section">
+                <div class="subheading">
+                  <span class="section-number">C</span>
+                  <div><h3>物料单价</h3><p>支持按最新采购价格调整</p></div>
+                </div>
+                <div class="field-grid five-col">
+                  <label class="field"><span>LDPE <em>元/吨</em></span><input data-field="ldpePrice" type="number" min="0" step="100" value="13500" /></label>
+                  <label class="field"><span>LLDPE <em>元/吨</em></span><input data-field="lldpePrice" type="number" min="0" step="100" value="10500" /></label>
+                  <label class="field"><span>MLLDPE <em>元/吨</em></span><input data-field="mlldpePrice" type="number" min="0" step="100" value="12500" /></label>
+                  <label class="field"><span>HDPE <em>元/吨</em></span><input data-field="hdpePrice" type="number" min="0" step="100" value="11000" /></label>
+                  <label class="field"><span>色母 <em>元/吨</em></span><input data-field="colorMasterbatchPrice" type="number" min="0" step="100" value="20000" /></label>
+                </div>
+              </section>
+
+              <section class="input-section last-section">
+                <div class="subheading">
+                  <span class="section-number">D</span>
+                  <div><h3>印刷与包装价格</h3><p>按单个袋子分摊到成本</p></div>
+                </div>
+                <div class="field-grid six-col">
+                  <label class="field"><span>水墨 <em>元/千克</em></span><input data-field="inkPricePerKg" type="number" min="0" step="1" value="45" /></label>
+                  <label class="field"><span>拉链头 <em>元/个</em></span><input data-field="zipperHeadPrice" type="number" min="0" step="0.001" value="0.01" /></label>
+                  <label class="field"><span>印刷版 <em>元/个</em></span><input data-field="platePrice" type="number" min="0" step="10" value="300" /></label>
+                  <label class="field"><span>彩盒 <em>元/盒</em></span><input data-field="boxPrice" type="number" min="0" step="0.01" value="0.42" /></label>
+                  <label class="field"><span>热熔胶 <em>元/千克</em></span><input data-field="gluePricePerKg" type="number" min="0" step="1" value="23" /></label>
+                  <label class="field"><span>外箱 <em>元/箱</em></span><input data-field="cartonPrice" type="number" min="0" step="0.1" value="4.8" /></label>
+                </div>
+                <div class="field-footnotes"><span>水墨按 18 千克/桶</span><span>热熔胶按 0.7 克/盒</span><span>印刷版按 10 万米寿命</span></div>
+              </section>
+            </form>
+          </section>
+
+          <aside class="results-column" aria-label="报价结果">
+            <section class="strategy-panel panel">
+              <div class="panel-heading compact-heading">
+                <div><span class="section-kicker">02 / STRATEGY</span><h2>选择报价策略</h2></div>
+                <span class="step-count">3 种方式</span>
+              </div>
+              <div class="strategy-list" role="group" aria-label="报价策略">
+                <button class="strategy-option selected" type="button" data-strategy="reference" aria-pressed="true">
+                  <span class="radio-dot"></span><span class="strategy-copy"><b>参照报价</b><small>按历史报价成本占比推算</small></span><span class="strategy-tag">推荐</span>
+                </button>
+                <button class="strategy-option" type="button" data-strategy="free" aria-pressed="false">
+                  <span class="radio-dot"></span><span class="strategy-copy"><b>自由报价</b><small>按自定义加价率计算</small></span>
+                </button>
+                <button class="strategy-option unavailable" type="button" data-strategy="industry" aria-pressed="false">
+                  <span class="radio-dot"></span><span class="strategy-copy"><b>行业报价</b><small>待补充工厂制造费用数据</small></span><span class="lock-icon" aria-hidden="true">Ⅱ</span>
+                </button>
+              </div>
+
+              <div class="strategy-control" id="referenceControl">
+                <label for="statisticSelect">历史占比统计方式</label>
+                <select id="statisticSelect">
+                  <option value="median">中位数 · 降低极端样本影响</option>
+                  <option value="mean">平均值 · 反映样本整体水平</option>
+                </select>
+              </div>
+              <div class="strategy-control hidden" id="freeControl">
+                <label for="markupInput">成本加价率 <span>按成本加价</span></label>
+                <div class="input-with-suffix"><input id="markupInput" data-field="markupPercent" type="number" min="-99" step="1" value="20" /><span>%</span></div>
+              </div>
+              <div class="industry-message hidden" id="industryMessage">行业报价需要人工、水电、房租、损耗和开工率等数据。README 将此策略列为后续功能，补齐参数后即可接入。</div>
+            </section>
+
+            <section class="quote-card" aria-labelledby="quoteTitle">
+              <div class="quote-card-top"><span class="section-kicker">03 / QUOTE RESULT</span><span class="live-pill"><i></i> 实时计算</span></div>
+              <div class="result-label" id="quoteTitle">建议单价 <span>人民币 / 个</span></div>
+              <div class="price-line"><span class="currency">¥</span><output id="quotePrice" aria-live="polite">—</output></div>
+              <div class="quote-subline"><span>单袋总成本</span><b id="totalCost">—</b><span class="subline-divider"></span><span>预估毛利</span><b id="grossProfit">—</b></div>
+              <div class="quote-rule" id="quoteRule">报价 = 单袋总成本 ÷ 历史成本占比中位数</div>
+              <div class="cost-ratio-row"><span>成本占报价</span><b id="quoteCostRatio">—</b></div>
+              <button class="copy-button" id="copyButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+                复制报价摘要
+              </button>
+              <p class="result-warning hidden" id="resultWarning"></p>
+            </section>
+
+            <section class="cost-panel panel" aria-labelledby="costTitle">
+              <div class="panel-heading compact-heading">
+                <div><span class="section-kicker">COST BREAKDOWN</span><h2 id="costTitle">单袋成本拆分</h2></div>
+                <span class="cost-unit">元 / 个</span>
+              </div>
+              <div class="cost-list" id="costList">
+                <div class="cost-row"><span>袋本体原料</span><b data-cost="body">—</b></div>
+                <div class="cost-row"><span>拉链条原料</span><b data-cost="zipper">—</b></div>
+                <div class="cost-row"><span>拉链头</span><b data-cost="zipperHead">—</b></div>
+                <div class="cost-row"><span>印刷（水墨 + 印刷版）</span><b data-cost="printing">—</b></div>
+                <div class="cost-row"><span>热熔胶</span><b data-cost="glue">—</b></div>
+                <div class="cost-row"><span>彩盒分摊</span><b data-cost="box">—</b></div>
+                <div class="cost-row"><span>外箱分摊</span><b data-cost="carton">—</b></div>
+                <div class="cost-row cost-total"><span>单袋总成本</span><b data-cost="total">—</b></div>
+              </div>
+              <div class="weight-list" aria-label="重量测算">
+                <div class="weight-row"><span>袋本体重量（不含飞边）</span><b><output id="bodyWeightNet">—</output><small>g</small></b></div>
+                <div class="weight-row"><span>袋本体重量（含飞边）</span><b><output id="bodyWeightGross">—</output><small>g</small></b></div>
+                <div class="weight-row"><span>拉链条重量</span><b><output id="zipperWeight">—</output><small>g</small></b></div>
+              </div>
+              <div class="cost-foot"><span class="cost-foot-dot"></span>包含包装及加工辅料，不含制造费用</div>
+            </section>
+          </aside>
+        </div>
+
+        <section class="benchmark-panel panel" aria-labelledby="benchmarkTitle">
+          <div class="panel-heading benchmark-heading">
+            <div><span class="section-kicker">REFERENCE DATA</span><h2 id="benchmarkTitle">历史报价成本占比</h2><p>按原始表中成本构成和单只报价重新计算，作为参照报价样本。</p></div>
+            <div class="benchmark-summary">
+              <div><span>有效样本</span><b id="sampleCount">4 <small>条</small></b></div>
+              <div><span>中位数</span><b id="medianRatio">—</b></div>
+              <div><span>平均值</span><b id="meanRatio">—</b></div>
+              <div><span>样本范围</span><b id="rangeRatio">—</b></div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>历史产品</th><th>每袋报价</th><th>原料成本</th><th>彩盒分摊</th><th>外箱分摊</th><th>历史总成本</th><th class="ratio-heading">成本占比</th></tr></thead>
+              <tbody id="benchmarkRows"></tbody>
+            </table>
+          </div>
+          <div class="benchmark-note"><span class="formula-mark">ƒx</span><span>历史成本占比 =（原料成本 + 彩盒分摊 + 外箱分摊）÷ 每袋报价。样本量较少，报价结果仅供参考。</span></div>
+        </section>
+
+        <footer class="page-footer">
+          <span>世科报价系统 <i>·</i> 初始参数来自项目提供的滑块袋成本计算表</span>
+          <span>产品公式版本 0.1 <i>·</i> 数据仅保存在当前浏览器</span>
+        </footer>
+      </main>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
