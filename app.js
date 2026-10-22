@@ -4,6 +4,8 @@
   const $$ = (selector) => [...document.querySelectorAll(selector)];
   const fields = $$('[data-field]');
   const choiceFields = $$('[data-choice-field]');
+  const printingSelect = $('[data-choice-field="printingColors"]');
+  const printingFields = $$('[data-printing-field]');
   const money = new Intl.NumberFormat('zh-CN', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
   const percent = new Intl.NumberFormat('zh-CN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
@@ -43,6 +45,7 @@
       }
       for (const input of choiceFields) {
         const value = saved.choices?.[input.dataset.choiceField];
+        if (input.dataset.choiceField === 'printingColors' && !['0', '1', '2'].includes(value)) continue;
         if (typeof value === 'string') input.value = value;
       }
       if (saved.statistic === 'mean' || saved.statistic === 'median') $('#statisticSelect').value = saved.statistic;
@@ -58,9 +61,30 @@
     } catch { /* The calculator still works when storage is blocked. */ }
   }
 
+  function updatePrintingControls() {
+    const colorCount = ShikePrinting.getPrintingColorCount(printingSelect.value);
+    ShikePrinting.setPrintingInputsDisabled(printingSelect.value, printingFields);
+    const colorLabels = ['无', '一色', '二色'];
+    const colorLabel = colorCount === null ? '' : colorLabels[colorCount];
+    $('#printingCostLabel').textContent = colorCount === 0
+      ? '印刷（无）'
+      : `印刷（${colorLabel}：水墨 + 印刷版）`;
+    $('#printingStatus').textContent = colorCount === 0
+      ? '无印刷：不计水墨和印刷版费用，相关价格输入已禁用。'
+      : colorCount === null
+        ? '请选择印刷颜色数。'
+        : `每色计一套水墨和印刷版费用；当前${colorLabel}。`;
+  }
+
   function validate(inputs) {
     const issues = [];
+    const printingColorCount = ShikePrinting.getPrintingColorCount(printingSelect.value);
+    if (printingColorCount === null) issues.unshift('请选择印刷颜色数');
     for (const input of fields) {
+      if (input.dataset.printingField !== undefined && printingColorCount === 0) {
+        input.setAttribute('aria-invalid', 'false');
+        continue;
+      }
       const value = inputs[input.dataset.field];
       const min = input.min === '' ? -Infinity : Number(input.min);
       const max = input.max === '' ? Infinity : Number(input.max);
@@ -100,15 +124,14 @@
     const zipper = zipperWeightG * zipperBlendPrice / 1_000_000;
 
     const zipperHead = inputs.zipperHeadPrice;
-    const ink = 18 * inputs.inkPricePerKg / inputs.inkBagsPerDrum;
-    const plate = inputs.platePrice / (100_000 / (inputs.widthMm / 1000));
+    const printCosts = ShikePrinting.calculatePrintingCosts(inputs, printingSelect.value);
+    const { ink, plate, printing } = printCosts;
     const glue = 0.7 * inputs.gluePricePerKg / 1000 / inputs.bagsPerBox;
     const box = inputs.boxPrice / inputs.bagsPerBox;
     const carton = inputs.cartonPrice / inputs.bagsPerBox / inputs.boxesPerCarton;
-    const printing = ink + plate;
     const total = body + zipper + zipperHead + printing + glue + box + carton;
 
-    return { body, zipper, zipperHead, printing, glue, box, carton, total, ink, plate, unfoldedLengthMm, finishedBodyWeightG, blownBodyWeightG, zipperWeightG };
+    return { body, zipper, zipperHead, printing, glue, box, carton, total, ink, plate, printingColorCount: printCosts.colorCount, unfoldedLengthMm, finishedBodyWeightG, blownBodyWeightG, zipperWeightG };
   }
 
   function updateBenchmarks() {
@@ -169,6 +192,7 @@
   }
 
   function render() {
+    updatePrintingControls();
     const inputs = readInputs();
     const issues = validate(inputs);
     const valid = issues.length === 0;
@@ -231,6 +255,7 @@
     const summary = [
       `世科报价 · 滑块袋 ${inputs.lengthMm}×${inputs.widthMm}mm · 插底 ${inputs.bottomMm}mm · ${$('[data-choice-field="packagingMethod"]').value} · ${$('[data-choice-field="zipperColor"]').value}`,
       `策略：${strategyLabel}`,
+      `印刷：${printingSelect.selectedOptions[0]?.textContent || '—'}`,
       `单袋总成本：¥${money.format(costs.total)}`,
       `建议单价：¥${money.format(quote)}/个`,
       `预估毛利：¥${money.format(grossProfit)}/个`,
@@ -259,7 +284,13 @@
   updateBenchmarks();
   $$('[data-strategy]').forEach((button) => button.addEventListener('click', () => selectStrategy(button.dataset.strategy)));
   fields.forEach((input) => input.addEventListener('input', () => { saveState(); render(); }));
-  choiceFields.forEach((input) => input.addEventListener('input', saveState));
+  choiceFields.forEach((input) => {
+    const eventName = input.tagName === 'SELECT' ? 'change' : 'input';
+    input.addEventListener(eventName, () => {
+      saveState();
+      if (input.dataset.choiceField === 'printingColors') render();
+    });
+  });
   $('#statisticSelect').addEventListener('change', () => { saveState(); render(); });
   $('#copyButton').addEventListener('click', copySummary);
   $('#resetButton').addEventListener('click', () => {
