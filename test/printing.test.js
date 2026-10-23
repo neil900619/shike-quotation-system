@@ -64,5 +64,5 @@ test('the UI offers all printing choices and connects the price fields to disabl
   assert.match(html, /<option value="2">二色<\/option>/);
   assert.equal((html.match(/data-printing-field/g) || []).length, 2);
   assert.match(app, /setPrintingInputsDisabled\(printingSelect\.value, printingFields\)/);
-  assert.match(app, /if \(input\.dataset\.choiceField === 'printingColors'\) render\(\)/);
+  assert.match(app, /input\.addEventListener\(eventName, \(\) => \{[\s\S]*?render\(\);[\s\S]*?\}\);/);
 });

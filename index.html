@@ -7,6 +7,7 @@
     <title>世科报价系统</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="printing.js" defer></script>
+    <script src="opp.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -36,15 +37,15 @@
             <button class="product-tab active" type="button" role="tab" aria-selected="true" data-product="slider">
               <span class="tab-dot"></span> 滑块袋 <small>已配置</small>
             </button>
-            <button class="product-tab disabled" type="button" role="tab" aria-selected="false" aria-disabled="true" title="等待 OPP 袋成本公式">
-              OPP 袋 <small>待补资料</small>
+            <button class="product-tab" type="button" role="tab" aria-selected="false" data-product="opp">
+              OPP/CPP 袋 <small>已配置</small>
             </button>
           </div>
         </section>
 
         <div class="notice" role="note">
           <span class="notice-icon">i</span>
-          <p>当前成本根据已提供的滑块袋公式计算，包含原料、包装物、印刷和打胶成本；暂未计入人工、水电、房租及其他制造费用。</p>
+          <p id="productNotice">当前成本根据已提供的滑块袋公式计算，包含原料、包装物、印刷和打胶成本；暂未计入人工、水电、房租及其他制造费用。</p>
           <span class="notice-source">按现有资料试算</span>
         </div>
 
@@ -59,6 +60,7 @@
             </div>
 
             <form id="quoteForm" autocomplete="off">
+              <div data-product-panel="slider">
               <section class="input-section">
                 <div class="subheading">
                   <span class="section-number">A</span>
@@ -140,6 +142,45 @@
                 </div>
                 <div class="field-footnotes"><span>水墨按 18 千克/桶</span><span>热熔胶按 0.7 克/盒</span><span>印刷版按 10 万米寿命</span></div>
               </section>
+              </div>
+
+              <div data-product-panel="opp" hidden>
+                <section class="input-section">
+                  <div class="subheading">
+                    <span class="section-number">A</span>
+                    <div><h3>产品规格</h3><p>按膜展开面积、胶条、袋装及外箱数量计算单袋成本</p></div>
+                  </div>
+                  <div class="field-grid four-col">
+                    <label class="field"><span>袋长 <em>mm</em></span><input data-field="lengthMm" type="number" min="0.01" step="1" value="430" /></label>
+                    <label class="field"><span>袋宽 <em>mm</em></span><input data-field="widthMm" type="number" min="0.01" step="1" value="310" /></label>
+                    <label class="field"><span>厚度 <em>mm</em></span><input data-field="thicknessMm" type="number" min="0.001" step="0.001" value="0.025" /></label>
+                    <label class="field"><span>薄膜类型</span><select data-choice-field="filmType"><option value="OPP" selected>OPP</option><option value="CPP">CPP</option></select></label>
+                    <label class="field"><span>是否插底</span><select data-choice-field="hasBottom"><option value="no" selected>否</option><option value="yes">是</option></select></label>
+                    <label class="field"><span>插底长度 <em>mm</em></span><input id="oppBottomLength" data-field="bottomMm" type="number" min="0" step="1" value="0" /></label>
+                    <label class="field"><span>是否粘胶条</span><select data-choice-field="hasTape"><option value="no" selected>否</option><option value="yes">是</option></select></label>
+                    <label class="field"><span>Lid <em>mm</em></span><input id="oppLidLength" data-field="lidMm" type="number" min="0" step="1" value="40" /></label>
+                    <label class="field"><span>每包装袋数 <em>个</em></span><input data-field="bagsPerPack" type="number" min="1" step="1" value="100" /></label>
+                    <label class="field"><span>每箱包装数 <em>包</em></span><input data-field="packsPerCarton" type="number" min="1" step="1" value="20" /></label>
+                    <label class="field"><span>包装方式 <em>默认项</em></span><input data-choice-field="oppPackagingMethod" type="text" value="袋装" /></label>
+                  </div>
+                  <div class="formula-hint"><span class="formula-mark">ƒx</span> 袋膜重量 = 宽 × 展开长 × 厚度 × 双面 × 0.00091；有插底时展开长加插底长度。</div>
+                  <div class="formula-hint"><span class="formula-mark">i</span> 有胶条时另计 Lid 覆膜和胶条；OPP 供应商样本按厚度、胶条状态和尺寸匹配，CPP 暂无对应报价样本。</div>
+                </section>
+
+                <section class="input-section last-section">
+                  <div class="subheading">
+                    <span class="section-number">B</span>
+                    <div><h3>物料与包装价格</h3><p>价格默认值取自 OPP/CPP 成本计算表，可按采购价调整</p></div>
+                  </div>
+                  <div class="field-grid three-col">
+                    <label class="field"><span>OPP/CPP 膜 <em>元/吨</em></span><input data-field="filmPricePerTon" type="number" min="0" step="100" value="13700" /></label>
+                    <label class="field"><span>胶条 <em>元/万米</em></span><input data-field="tapePricePer10kMeters" type="number" min="0" step="10" value="400" /></label>
+                    <label class="field"><span>包装袋（含标签） <em>元/个</em></span><input data-field="packagingBagPrice" type="number" min="0" step="0.01" value="0.07" /></label>
+                    <label class="field"><span>防尘袋 <em>元/个</em></span><input data-field="dustBagPrice" type="number" min="0" step="0.01" value="0.2" /></label>
+                    <label class="field"><span>纸箱 <em>元/个</em></span><input data-field="cartonPrice" type="number" min="0" step="0.1" value="4.5" /></label>
+                  </div>
+                </section>
+              </div>
             </form>
           </section>
 
@@ -162,17 +203,20 @@
               </div>
 
               <div class="strategy-control" id="referenceControl">
-                <label for="statisticSelect">历史占比统计方式</label>
-                <select id="statisticSelect">
+                <div id="sliderStatisticControl">
+                  <label for="statisticSelect">历史占比统计方式</label>
+                  <select id="statisticSelect">
                   <option value="median">中位数 · 降低极端样本影响</option>
                   <option value="mean">平均值 · 反映样本整体水平</option>
-                </select>
+                  </select>
+                </div>
+                <p class="reference-method hidden" id="oppReferenceMethod">按相同胶条状态、最接近厚度筛选，再按尺寸相邻样本插值；小规格占比低，会使用对应小规格比例。</p>
               </div>
               <div class="strategy-control hidden" id="freeControl">
                 <label for="markupInput">成本加价率 <span>按成本加价</span></label>
                 <div class="input-with-suffix"><input id="markupInput" data-field="markupPercent" type="number" min="-99" step="1" value="20" /><span>%</span></div>
               </div>
-              <div class="industry-message hidden" id="industryMessage">行业报价需要人工、水电、房租、损耗和开工率等数据。README 将此策略列为后续功能，补齐参数后即可接入。</div>
+              <div class="industry-message hidden" id="industryMessage">行业报价需要人工、水电、房租、损耗和开工率等数据，补齐工厂制造费用参数后即可接入。</div>
             </section>
 
             <section class="quote-card" aria-labelledby="quoteTitle">
@@ -195,46 +239,47 @@
                 <span class="cost-unit">元 / 个</span>
               </div>
               <div class="cost-list" id="costList">
-                <div class="cost-row"><span>袋本体原料</span><b data-cost="body">—</b></div>
-                <div class="cost-row"><span>拉链条原料</span><b data-cost="zipper">—</b></div>
+                <div class="cost-row"><span id="bodyCostLabel">袋本体原料</span><b data-cost="body">—</b></div>
+                <div class="cost-row"><span id="zipperCostLabel">拉链条原料</span><b data-cost="zipper">—</b></div>
                 <div class="cost-row"><span>拉链头</span><b data-cost="zipperHead">—</b></div>
                 <div class="cost-row"><span id="printingCostLabel">印刷（一色：水墨 + 印刷版）</span><b data-cost="printing">—</b></div>
                 <div class="cost-row"><span>热熔胶</span><b data-cost="glue">—</b></div>
-                <div class="cost-row"><span>彩盒分摊</span><b data-cost="box">—</b></div>
+                <div class="cost-row"><span id="boxCostLabel">彩盒分摊</span><b data-cost="box">—</b></div>
                 <div class="cost-row"><span>外箱分摊</span><b data-cost="carton">—</b></div>
+                <div class="cost-row" data-opp-cost-row><span>防尘袋分摊</span><b data-cost="dustBag">—</b></div>
                 <div class="cost-row cost-total"><span>单袋总成本</span><b data-cost="total">—</b></div>
               </div>
               <div class="weight-list" aria-label="重量测算">
-                <div class="weight-row"><span>袋本体重量（不含飞边）</span><b><output id="bodyWeightNet">—</output><small>g</small></b></div>
-                <div class="weight-row"><span>袋本体重量（含飞边）</span><b><output id="bodyWeightGross">—</output><small>g</small></b></div>
-                <div class="weight-row"><span>拉链条重量</span><b><output id="zipperWeight">—</output><small>g</small></b></div>
+                <div class="weight-row" data-weight-row="net"><span id="weightNetLabel">袋本体重量（不含飞边）</span><b><output id="bodyWeightNet">—</output><small id="weightNetUnit">g</small></b></div>
+                <div class="weight-row" data-weight-row="gross"><span>袋本体重量（含飞边）</span><b><output id="bodyWeightGross">—</output><small>g</small></b></div>
+                <div class="weight-row" data-weight-row="zipper"><span id="weightZipperLabel">拉链条重量</span><b><output id="zipperWeight">—</output><small id="weightZipperUnit">g</small></b></div>
               </div>
-              <div class="cost-foot"><span class="cost-foot-dot"></span>包含包装及加工辅料，不含制造费用</div>
+              <div class="cost-foot"><span class="cost-foot-dot"></span><span id="costFootText">包含包装及加工辅料，不含制造费用</span></div>
             </section>
           </aside>
         </div>
 
         <section class="benchmark-panel panel" aria-labelledby="benchmarkTitle">
           <div class="panel-heading benchmark-heading">
-            <div><span class="section-kicker">REFERENCE DATA</span><h2 id="benchmarkTitle">历史报价成本占比</h2><p>按原始表中成本构成和单只报价重新计算，作为参照报价样本。</p></div>
+            <div><span class="section-kicker">REFERENCE DATA</span><h2 id="benchmarkTitle">历史报价成本占比</h2><p id="benchmarkDescription">按原始表中成本构成和单只报价重新计算，作为参照报价样本。</p></div>
             <div class="benchmark-summary">
               <div><span>有效样本</span><b id="sampleCount">4 <small>条</small></b></div>
-              <div><span>中位数</span><b id="medianRatio">—</b></div>
-              <div><span>平均值</span><b id="meanRatio">—</b></div>
+              <div><span id="medianRatioLabel">中位数</span><b id="medianRatio">—</b></div>
+              <div><span id="meanRatioLabel">平均值</span><b id="meanRatio">—</b></div>
               <div><span>样本范围</span><b id="rangeRatio">—</b></div>
             </div>
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>历史产品</th><th>每袋报价</th><th>原料成本</th><th>彩盒分摊</th><th>外箱分摊</th><th>历史总成本</th><th class="ratio-heading">成本占比</th></tr></thead>
+              <thead id="benchmarkTableHead"><tr><th>历史产品</th><th>每袋报价</th><th>原料成本</th><th>彩盒分摊</th><th>外箱分摊</th><th>历史总成本</th><th class="ratio-heading">成本占比</th></tr></thead>
               <tbody id="benchmarkRows"></tbody>
             </table>
           </div>
-          <div class="benchmark-note"><span class="formula-mark">ƒx</span><span>历史成本占比 =（原料成本 + 彩盒分摊 + 外箱分摊）÷ 每袋报价。样本量较少，报价结果仅供参考。</span></div>
+          <div class="benchmark-note"><span class="formula-mark">ƒx</span><span id="benchmarkNote">历史成本占比 =（原料成本 + 彩盒分摊 + 外箱分摊）÷ 每袋报价。样本量较少，报价结果仅供参考。</span></div>
         </section>
 
         <footer class="page-footer">
-          <span>世科报价系统 <i>·</i> 初始参数来自项目提供的滑块袋成本计算表</span>
+          <span>世科报价系统 <i>·</i> 初始参数来自项目提供的产品成本计算表</span>
           <span>产品公式版本 0.1 <i>·</i> 数据仅保存在当前浏览器</span>
         </footer>
       </main>
