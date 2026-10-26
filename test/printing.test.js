@@ -62,7 +62,8 @@ test('the UI offers all printing choices and connects the price fields to disabl
   assert.match(html, /<option value="0">无<\/option>/);
   assert.match(html, /<option value="1" selected>一色<\/option>/);
   assert.match(html, /<option value="2">二色<\/option>/);
-  assert.equal((html.match(/data-printing-field/g) || []).length, 2);
+  assert.equal((html.match(/data-printing-field="slider"/g) || []).length, 2);
+  assert.equal((html.match(/data-printing-field="zipper"/g) || []).length, 2);
   assert.match(app, /setPrintingInputsDisabled\(printingSelect\.value, printingFields\)/);
   assert.match(app, /input\.addEventListener\(eventName, \(\) => \{[\s\S]*?render\(\);[\s\S]*?\}\);/);
 });
