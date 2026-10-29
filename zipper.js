@@ -81,14 +81,20 @@
   }
 
   function calculateBagWeight(inputs) {
+    if (!Number.isFinite(inputs.zipperWeightPercent) || inputs.zipperWeightPercent < 0 || inputs.zipperWeightPercent > 100) {
+      throw new RangeError('Zipper weight share must be between 0 and 100 percent.');
+    }
     const exact = weightSamples.find((sample) =>
       sample.trackCount === inputs.trackCount && sample.widthMm === inputs.widthMm &&
       sample.lengthBelowMm === inputs.lengthBelowMm && sample.lengthAboveMm === inputs.lengthAboveMm &&
       sample.bottomMm === inputs.bottomMm && sample.thicknessMm === inputs.thicknessMm);
     const totalWeightG = exact ? exact.weightG : calculateBagWeightModel(inputs);
+    const bodyWeightPercent = 100 - inputs.zipperWeightPercent;
     return {
       totalWeightG,
-      bodyWeightG: totalWeightG * inputs.bodyWeightPercent / 100,
+      bodyWeightPercent,
+      zipperWeightPercent: inputs.zipperWeightPercent,
+      bodyWeightG: totalWeightG * bodyWeightPercent / 100,
       zipperWeightG: totalWeightG * inputs.zipperWeightPercent / 100,
       developedLengthMm: inputs.lengthBelowMm + inputs.lengthAboveMm + inputs.bottomMm,
       source: exact ? 'measured-sample' : 'size-model',

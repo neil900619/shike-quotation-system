@@ -144,10 +144,15 @@
     } else if (selectedProduct === 'opp' && $('[data-choice-field="oppPackagingMethod"]').value.trim() !== '袋装') {
       issues.unshift('当前 OPP/CPP 成本公式按袋装分摊，其他包装方式暂不能计算报价');
     } else if (selectedProduct === 'zipper') {
+      const bodyWeightPercent = Number.isFinite(inputs.zipperWeightPercent)
+        ? 100 - inputs.zipperWeightPercent
+        : NaN;
+      $('#zipperBodyWeightPercent').value = Number.isFinite(bodyWeightPercent)
+        ? String(Number(bodyWeightPercent.toFixed(1)))
+        : '';
       const ratios = [
         { total: inputs.bodyLdpePercent + inputs.bodyLldpePercent, selector: '#zipperBodyRatioStatus', label: '袋本体 LDPE 与 LLDPE 配比' },
         { total: inputs.zipperLdpePercent + inputs.zipperColorPercent, selector: '#zipperRatioStatus', label: '夹链 LDPE 与色母配比' },
-        { total: inputs.bodyWeightPercent + inputs.zipperWeightPercent, selector: null, label: '袋本体与夹链重量占比' },
       ];
       for (const ratio of ratios) {
         const valid = Number.isFinite(ratio.total) && Math.abs(ratio.total - 100) <= 0.02;

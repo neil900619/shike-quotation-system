@@ -228,10 +228,10 @@
                     </div>
                   </div>
                   <div class="field-grid two-col zipper-weight-split">
-                    <label class="field"><span>袋本体重量占比 <em>%</em></span><input data-field="bodyWeightPercent" type="number" min="0" max="100" step="0.1" value="90" /></label>
+                    <label class="field"><span>袋本体重量占比 <em>自动</em></span><input id="zipperBodyWeightPercent" type="number" value="90" readonly aria-readonly="true" /></label>
                     <label class="field"><span>夹链重量占比 <em>%</em></span><input data-field="zipperWeightPercent" type="number" min="0" max="100" step="0.1" value="10" /></label>
                   </div>
-                  <div class="formula-hint"><span class="formula-mark">i</span> 重量占比按原表粗略估算，袋本体与夹链之和需为 100%。</div>
+                  <div class="formula-hint"><span class="formula-mark">i</span> 夹链占比默认 10%，可按实际情况调整；袋本体占比自动按 100% − 夹链占比计算，并用于本体和夹链的原料成本核算。</div>
                 </section>
 
                 <section class="input-section">

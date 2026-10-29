@@ -18,7 +18,6 @@ const defaultInputs = {
   widthMm: 270,
   thicknessMm: 0.06,
   bottomMm: 0,
-  bodyWeightPercent: 90,
   zipperWeightPercent: 10,
   bodyLdpePercent: 70,
   bodyLldpePercent: 30,
@@ -41,10 +40,31 @@ test('the default double-track zipper bag matches its measured 11.5 g sample', (
   const weight = calculateBagWeight(defaultInputs);
 
   assert.equal(weight.totalWeightG, 11.5);
+  assert.equal(weight.bodyWeightPercent, 90);
+  assert.equal(weight.zipperWeightPercent, 10);
   assert.equal(weight.bodyWeightG, 10.35);
   assert.equal(weight.zipperWeightG, 1.15);
   assert.equal(weight.developedLengthMm, 310);
   assert.equal(weight.source, 'measured-sample');
+});
+
+test('changing zipper share derives body share and uses both shares for material costs', () => {
+  const inputs = { ...defaultInputs, zipperWeightPercent: 25 };
+  const weight = calculateBagWeight(inputs);
+  const costs = calculateCosts(inputs, 1);
+
+  assert.equal(weight.totalWeightG, 11.5);
+  assert.equal(weight.bodyWeightPercent, 75);
+  assert.equal(weight.zipperWeightPercent, 25);
+  assert.equal(weight.bodyWeightG, 8.625);
+  assert.equal(weight.zipperWeightG, 2.875);
+  assert.ok(Math.abs(costs.body - 8.625 * 12600 / 1_000_000) < 1e-12);
+  assert.ok(Math.abs(costs.zipper - 2.875 * 13630 / 1_000_000) < 1e-12);
+});
+
+test('zipper share must be between 0 and 100 percent', () => {
+  assert.throws(() => calculateBagWeight({ ...defaultInputs, zipperWeightPercent: -1 }), RangeError);
+  assert.throws(() => calculateBagWeight({ ...defaultInputs, zipperWeightPercent: 100.1 }), RangeError);
 });
 
 test('the sample-fitted model estimates single and double track weights within the observed error range', () => {
@@ -132,8 +152,12 @@ test('the UI loads the zipper module and provides a single/double track selector
   assert.match(html, /data-product="zipper"/);
   assert.match(html, /data-product-panel="zipper"/);
   assert.match(html, /data-choice-field="trackCount"/);
+  assert.match(html, /id="zipperBodyWeightPercent"[^>]*readonly/);
+  assert.match(html, /data-field="zipperWeightPercent"/);
+  assert.doesNotMatch(html, /data-field="bodyWeightPercent"/);
   assert.match(app, /ShikeZipper\.calculateCosts/);
   assert.match(app, /ShikeZipper\.estimateReferenceRatio/);
   assert.match(app, /const values = \{ slider: \{\}, opp: \{\}, zipper: \{\}, shared: \{\} \}/);
   assert.match(app, /function updateZipperPrintingControls\(\) \{[\s\S]*?setPrintingInputsDisabled\(zipperPrintingSelect\.value, zipperPrintingFields\)/);
+  assert.match(app, /const bodyWeightPercent = Number\.isFinite\(inputs\.zipperWeightPercent\)[\s\S]*?100 - inputs\.zipperWeightPercent/);
 });
