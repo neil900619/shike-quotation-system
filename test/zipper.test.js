@@ -13,6 +13,7 @@ const {
 
 const defaultInputs = {
   trackCount: 2,
+  packagingMethod: 'box',
   lengthBelowMm: 280,
   lengthAboveMm: 30,
   widthMm: 270,
@@ -99,6 +100,31 @@ test('zipper bag costs reproduce the supplied formula defaults', () => {
   assert.ok(Math.abs(costs.total - 0.16864338888888888) < 1e-12);
 });
 
+test('bag packaging prorates bag, dust-bag, and carton prices by package counts', () => {
+  const costs = calculateCosts({
+    ...defaultInputs,
+    packagingMethod: 'bag',
+    bagsPerPackage: 100,
+    packagesPerCarton: 20,
+    packagingBagPrice: 0.07,
+    dustBagPrice: 0.2,
+  }, 1);
+
+  assert.equal(costs.glue, 0);
+  assert.equal(costs.box, 0);
+  assert.ok(Math.abs(costs.packagingBag - 0.0007) < 1e-12);
+  assert.ok(Math.abs(costs.dustBag - 0.0001) < 1e-12);
+  assert.ok(Math.abs(costs.carton - 0.00155) < 1e-12);
+  assert.ok(Math.abs(costs.total - 0.1524845) < 1e-12);
+});
+
+test('each packaging method requires positive package counts', () => {
+  assert.throws(() => calculateCosts({ ...defaultInputs, packagingMethod: 'box', bagsPerBox: 0 }, 0), RangeError);
+  assert.throws(() => calculateCosts({ ...defaultInputs, packagingMethod: 'bag', bagsPerPackage: 0, packagesPerCarton: 20 }, 0), RangeError);
+  assert.throws(() => calculateCosts({ ...defaultInputs, packagingMethod: 'bag', bagsPerPackage: 100, packagesPerCarton: 0 }, 0), RangeError);
+  assert.throws(() => calculateCosts({ ...defaultInputs, packagingMethod: 'unknown' }, 0), RangeError);
+});
+
 test('printing cost is zero with no printing and doubles for two colors', () => {
   const noPrint = calculateCosts(defaultInputs, 0);
   const oneColor = calculateCosts(defaultInputs, 1);
@@ -144,14 +170,46 @@ test('reference estimates interpolate by size and thickness and do not borrow an
   assert.equal(unsupported.reason, 'no-matching-samples');
 });
 
+test('reference estimates only use samples matching the selected packaging method', () => {
+  const bagSample = estimateReferenceRatio({
+    trackCount: 1, printingColorCount: 0, packagingType: '袋装', widthMm: 50,
+    lengthBelowMm: 70, lengthAboveMm: 20, bottomMm: 0, thicknessMm: 0.04,
+  });
+  const unavailableBox = estimateReferenceRatio({
+    trackCount: 1, printingColorCount: 0, packagingType: '盒装', widthMm: 50,
+    lengthBelowMm: 70, lengthAboveMm: 20, bottomMm: 0, thicknessMm: 0.04,
+  });
+  const boxSample = estimateReferenceRatio({
+    trackCount: 2, printingColorCount: 1, packagingType: '盒装', widthMm: 270,
+    lengthBelowMm: 280, lengthAboveMm: 30, bottomMm: 0, thicknessMm: 0.06,
+  });
+  const unavailableBag = estimateReferenceRatio({
+    trackCount: 2, printingColorCount: 1, packagingType: '袋装', widthMm: 270,
+    lengthBelowMm: 280, lengthAboveMm: 30, bottomMm: 0, thicknessMm: 0.06,
+  });
+
+  assert.equal(bagSample.reason, 'exact-size');
+  assert.equal(boxSample.reason, 'exact-size');
+  assert.equal(unavailableBox.reason, 'no-matching-samples');
+  assert.equal(unavailableBag.reason, 'no-matching-samples');
+});
+
 test('the UI loads the zipper module and provides a single/double track selector', () => {
   const html = readFileSync(join(__dirname, '../index.html'), 'utf8');
   const app = readFileSync(join(__dirname, '../app.js'), 'utf8');
+  const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 
+  assert.equal(new Set(ids).size, ids.length, 'HTML element ids must be unique');
   assert.match(html, /<script src="zipper\.js" defer><\/script>/);
   assert.match(html, /data-product="zipper"/);
   assert.match(html, /data-product-panel="zipper"/);
   assert.match(html, /data-choice-field="trackCount"/);
+  assert.match(html, /data-choice-field="zipperPackagingMethod"[\s\S]*?<option value="box" selected>盒装<\/option><option value="bag">袋装<\/option>/);
+  assert.match(html, /data-field="bagsPerPackage"/);
+  assert.match(html, /data-field="packagesPerCarton"/);
+  assert.match(html, /data-field="packagingBagPrice"/);
+  assert.match(html, /data-field="dustBagPrice"/);
+  assert.match(html, /data-cost="packagingBag"/);
   assert.match(html, /id="zipperBodyWeightPercent"[^>]*readonly/);
   assert.match(html, /data-field="zipperWeightPercent"/);
   assert.doesNotMatch(html, /data-field="bodyWeightPercent"/);
@@ -159,5 +217,8 @@ test('the UI loads the zipper module and provides a single/double track selector
   assert.match(app, /ShikeZipper\.estimateReferenceRatio/);
   assert.match(app, /const values = \{ slider: \{\}, opp: \{\}, zipper: \{\}, shared: \{\} \}/);
   assert.match(app, /function updateZipperPrintingControls\(\) \{[\s\S]*?setPrintingInputsDisabled\(zipperPrintingSelect\.value, zipperPrintingFields\)/);
+  assert.match(app, /function updateZipperPackagingControls\(\) \{[\s\S]*?field\.hidden = !active[\s\S]*?input\.disabled = !active/);
+  assert.match(app, /packagingMethod: zipperPackagingSelect\.value/);
+  assert.match(app, /packagingType,/);
   assert.match(app, /const bodyWeightPercent = Number\.isFinite\(inputs\.zipperWeightPercent\)[\s\S]*?100 - inputs\.zipperWeightPercent/);
 });

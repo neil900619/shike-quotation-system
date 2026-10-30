@@ -135,6 +135,7 @@ h1 { margin: 0; font-size: 30px; line-height: 1.25; letter-spacing: -.85px; font
 .input-with-suffix > span { position: absolute; top: 10px; right: 11px; color: #84928b; font: 11px 'DM Mono', monospace; }
 .industry-message { margin-top: 12px; padding: 10px 11px; border: 1px solid #f0e4d3; border-radius: 7px; background: #fdf8f0; color: #90734e; font-size: 10px; line-height: 1.65; }
 .hidden { display: none !important; }
+[hidden] { display: none !important; }
 
 .quote-card { overflow: hidden; padding: 17px 18px 16px; border: 1px solid #286c56; border-radius: 12px; background: linear-gradient(147deg, #1e765d 0%, #155941 100%); color: #fff; box-shadow: 0 7px 20px rgba(26, 100, 74, .14); }
 .quote-card-top { display: flex; align-items: center; justify-content: space-between; }

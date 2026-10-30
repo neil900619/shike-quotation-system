@@ -103,6 +103,8 @@
 
   function calculateCosts(inputs, printingColorCount) {
     if (![0, 1, 2].includes(printingColorCount)) throw new RangeError('Printing color count must be 0, 1, or 2.');
+    const packagingMethod = inputs.packagingMethod ?? 'box';
+    if (!['box', 'bag'].includes(packagingMethod)) throw new RangeError('Packaging method must be box or bag.');
     const weight = calculateBagWeight(inputs);
     const bodyBlendPrice = inputs.ldpePrice * inputs.bodyLdpePercent / 100 + inputs.lldpePrice * inputs.bodyLldpePercent / 100;
     const zipperBlendPrice = inputs.ldpePrice * inputs.zipperLdpePercent / 100 + inputs.colorMasterbatchPrice * inputs.zipperColorPercent / 100;
@@ -111,11 +113,28 @@
     const ink = printingColorCount === 0 ? 0 : 18 * inputs.inkPricePerKg / inputs.inkBagsPerDrum * printingColorCount;
     const plate = printingColorCount === 0 ? 0 : inputs.platePrice * inputs.widthMm / 100_000_000 * printingColorCount;
     const printing = ink + plate;
-    const glue = 0.7 * inputs.gluePricePerKg / 1000 / inputs.bagsPerBox;
-    const box = inputs.boxPrice / inputs.bagsPerBox;
-    const carton = inputs.cartonPrice / inputs.bagsPerBox / inputs.boxesPerCarton;
-    const total = body + zipper + printing + glue + box + carton;
-    return { ...weight, body, zipper, printing, ink, plate, glue, box, carton, total, printingColorCount, bodyBlendPrice, zipperBlendPrice };
+    let glue = 0;
+    let box = 0;
+    let packagingBag = 0;
+    let dustBag = 0;
+    let carton;
+    if (packagingMethod === 'box') {
+      if (![inputs.bagsPerBox, inputs.boxesPerCarton].every((value) => Number.isFinite(value) && value > 0)) {
+        throw new RangeError('Box packaging quantities must be positive.');
+      }
+      glue = 0.7 * inputs.gluePricePerKg / 1000 / inputs.bagsPerBox;
+      box = inputs.boxPrice / inputs.bagsPerBox;
+      carton = inputs.cartonPrice / inputs.bagsPerBox / inputs.boxesPerCarton;
+    } else {
+      if (![inputs.bagsPerPackage, inputs.packagesPerCarton].every((value) => Number.isFinite(value) && value > 0)) {
+        throw new RangeError('Bag packaging quantities must be positive.');
+      }
+      packagingBag = inputs.packagingBagPrice / inputs.bagsPerPackage;
+      dustBag = inputs.dustBagPrice / inputs.bagsPerPackage / inputs.packagesPerCarton;
+      carton = inputs.cartonPrice / inputs.bagsPerPackage / inputs.packagesPerCarton;
+    }
+    const total = body + zipper + printing + glue + box + packagingBag + dustBag + carton;
+    return { ...weight, body, zipper, printing, ink, plate, glue, box, packagingBag, dustBag, carton, total, printingColorCount, packagingMethod, bodyBlendPrice, zipperBlendPrice };
   }
 
   function median(values) {
@@ -149,7 +168,8 @@
 
   function estimateReferenceRatio(inputs) {
     const candidates = referenceSamples.filter((sample) =>
-      sample.trackCount === inputs.trackCount && sample.printingColorCount === inputs.printingColorCount);
+      sample.trackCount === inputs.trackCount && sample.printingColorCount === inputs.printingColorCount &&
+      (!inputs.packagingType || sample.packagingType === inputs.packagingType));
     if (candidates.length === 0) return { ratio: null, reason: 'no-matching-samples', samples: [], sampleCount: 0 };
     const areaMm2 = inputs.widthMm * (inputs.lengthBelowMm + inputs.lengthAboveMm + inputs.bottomMm);
     if (!Number.isFinite(areaMm2) || areaMm2 <= 0) return { ratio: null, reason: 'invalid-size', samples: [], sampleCount: candidates.length };

@@ -199,11 +199,14 @@
                     <label class="field"><span>厚度 <em>mm</em></span><input data-field="thicknessMm" type="number" min="0.001" step="0.001" value="0.06" /></label>
                     <label class="field"><span>插底 <em>mm</em></span><input data-field="bottomMm" type="number" min="0" step="1" value="0" /></label>
                     <label class="field"><span>筋条数量</span><select data-choice-field="trackCount"><option value="1">单筋条</option><option value="2" selected>双筋条</option></select></label>
-                    <label class="field"><span>每盒入数 <em>个</em></span><input data-field="bagsPerBox" type="number" min="1" step="1" value="30" /></label>
-                    <label class="field"><span>每箱盒数 <em>盒</em></span><input data-field="boxesPerCarton" type="number" min="1" step="1" value="24" /></label>
+                    <label class="field"><span>包装方式</span><select data-choice-field="zipperPackagingMethod"><option value="box" selected>盒装</option><option value="bag">袋装</option></select></label>
+                    <label class="field" data-packaging-field="box"><span>每盒入数 <em>个</em></span><input data-field="bagsPerBox" type="number" min="1" step="1" value="30" /></label>
+                    <label class="field" data-packaging-field="box"><span>每箱盒数 <em>盒</em></span><input data-field="boxesPerCarton" type="number" min="1" step="1" value="24" /></label>
+                    <label class="field" data-packaging-field="bag" hidden><span>每包装袋入数 <em>个</em></span><input data-field="bagsPerPackage" type="number" min="1" step="1" value="" /></label>
+                    <label class="field" data-packaging-field="bag" hidden><span>每箱包装袋数 <em>袋</em></span><input data-field="packagesPerCarton" type="number" min="1" step="1" value="" /></label>
                   </div>
                   <div class="formula-hint"><span class="formula-mark">ƒx</span> 总重量模型按袋宽、展开总长、厚度和筋条数拟合重量统计样本；超出已统计规格时按模型估算。</div>
-                  <div class="formula-hint"><span class="formula-mark">i</span> 原成本表按袋本体 90%、夹链 10% 分配总重量；成本及分摊按盒装公式计算。</div>
+                  <div class="formula-hint"><span class="formula-mark">i</span> 夹链重量占比默认 10% 并可调整；袋本体占比自动按剩余比例计算。</div>
                 </section>
 
                 <section class="input-section">
@@ -259,11 +262,14 @@
                     <label class="field"><span>水墨 <em>元/千克</em></span><input data-field="inkPricePerKg" data-printing-field="zipper" type="number" min="0" step="1" value="45" /></label>
                     <label class="field"><span>每桶可印数量 <em>个</em></span><input data-field="inkBagsPerDrum" type="number" min="1" step="1000" value="250000" /></label>
                     <label class="field"><span>印刷版 <em>元/个</em></span><input data-field="platePrice" data-printing-field="zipper" type="number" min="0" step="10" value="300" /></label>
-                    <label class="field"><span>热熔胶 <em>元/千克</em></span><input data-field="gluePricePerKg" type="number" min="0" step="1" value="23" /></label>
-                    <label class="field"><span>彩盒 <em>元/盒</em></span><input data-field="boxPrice" type="number" min="0" step="0.01" value="0.41" /></label>
+                    <label class="field" data-packaging-field="box"><span>热熔胶 <em>元/千克</em></span><input data-field="gluePricePerKg" type="number" min="0" step="1" value="23" /></label>
+                    <label class="field" data-packaging-field="box"><span>彩盒 <em>元/盒</em></span><input data-field="boxPrice" type="number" min="0" step="0.01" value="0.41" /></label>
+                    <label class="field" data-packaging-field="bag" hidden><span>包装袋 <em>元/个</em></span><input data-field="packagingBagPrice" type="number" min="0" step="0.01" value="" /></label>
+                    <label class="field" data-packaging-field="bag" hidden><span>防尘袋 <em>元/个</em></span><input data-field="dustBagPrice" type="number" min="0" step="0.01" value="" /></label>
                     <label class="field"><span>外箱 <em>元/箱</em></span><input data-field="cartonPrice" type="number" min="0" step="0.1" value="3.1" /></label>
                   </div>
-                  <div class="field-footnotes"><span>水墨按 18 千克/桶</span><span>热熔胶按 0.7 克/盒</span><span>印刷版按 10 万米寿命</span></div>
+                  <div class="field-footnotes"><span>水墨按 18 千克/桶</span><span data-packaging-field="box">热熔胶按 0.7 克/盒</span><span>印刷版按 10 万米寿命</span></div>
+                  <div class="formula-hint" id="zipperPackagingStatus"><span class="formula-mark">i</span><span>盒装按每盒入数分摊彩盒、热熔胶和纸箱成本。</span></div>
                 </section>
               </div>
             </form>
@@ -330,8 +336,9 @@
                 <div class="cost-row"><span id="printingCostLabel">印刷（一色：水墨 + 印刷版）</span><b data-cost="printing">—</b></div>
                 <div class="cost-row"><span>热熔胶</span><b data-cost="glue">—</b></div>
                 <div class="cost-row"><span id="boxCostLabel">彩盒分摊</span><b data-cost="box">—</b></div>
-                <div class="cost-row"><span>外箱分摊</span><b data-cost="carton">—</b></div>
-                <div class="cost-row" data-opp-cost-row><span>防尘袋分摊</span><b data-cost="dustBag">—</b></div>
+                <div class="cost-row"><span id="packagingBagCostLabel">包装袋分摊</span><b data-cost="packagingBag">—</b></div>
+                <div class="cost-row"><span id="cartonCostLabel">外箱分摊</span><b data-cost="carton">—</b></div>
+                <div class="cost-row"><span id="dustBagCostLabel">防尘袋分摊</span><b data-cost="dustBag">—</b></div>
                 <div class="cost-row cost-total"><span>单袋总成本</span><b data-cost="total">—</b></div>
               </div>
               <div class="weight-list" aria-label="重量测算">

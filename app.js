@@ -6,6 +6,7 @@
   const choiceFields = $$('[data-choice-field]');
   const printingSelect = $('[data-choice-field="printingColors"]');
   const zipperPrintingSelect = $('[data-choice-field="zipperPrintingColors"]');
+  const zipperPackagingSelect = $('[data-choice-field="zipperPackagingMethod"]');
   const printingFields = $$('[data-printing-field="slider"]');
   const zipperPrintingFields = $$('[data-printing-field="zipper"]');
   const money = new Intl.NumberFormat('zh-CN', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
@@ -56,6 +57,7 @@
         const product = input.closest('[data-product-panel]')?.dataset.productPanel;
         const value = saved.choices?.[product]?.[input.dataset.choiceField] ?? (product === 'slider' ? saved.choices?.[input.dataset.choiceField] : undefined);
         if (input.dataset.choiceField === 'printingColors' && !['0', '1', '2'].includes(value)) continue;
+        if (input.dataset.choiceField === 'zipperPackagingMethod' && !['box', 'bag'].includes(value)) continue;
         if (typeof value === 'string') input.value = value;
       }
       if (saved.statistic === 'mean' || saved.statistic === 'median') $('#statisticSelect').value = saved.statistic;
@@ -102,6 +104,20 @@
         : `每色计一套水墨和印刷版费用；当前${labels[colorCount]}。`;
   }
 
+  function updateZipperPackagingControls() {
+    const method = zipperPackagingSelect.value;
+    $$('[data-packaging-field]').forEach((field) => {
+      const active = field.dataset.packagingField === method;
+      field.hidden = !active;
+      field.querySelectorAll('input, select').forEach((input) => { input.disabled = !active; });
+    });
+    $('#zipperPackagingStatus').lastElementChild.textContent = method === 'box'
+      ? '盒装按每盒入数分摊彩盒、热熔胶和纸箱成本。'
+      : method === 'bag'
+        ? '袋装按包装数量分摊包装袋、防尘袋和纸箱成本；请填写实际装箱数和单价。'
+        : '请选择包装方式。';
+  }
+
   function validate(inputs) {
     const issues = [];
     const printingColorCount = selectedProduct === 'slider'
@@ -144,6 +160,7 @@
     } else if (selectedProduct === 'opp' && $('[data-choice-field="oppPackagingMethod"]').value.trim() !== '袋装') {
       issues.unshift('当前 OPP/CPP 成本公式按袋装分摊，其他包装方式暂不能计算报价');
     } else if (selectedProduct === 'zipper') {
+      if (!['box', 'bag'].includes(zipperPackagingSelect.value)) issues.unshift('请选择盒装或袋装');
       const bodyWeightPercent = Number.isFinite(inputs.zipperWeightPercent)
         ? 100 - inputs.zipperWeightPercent
         : NaN;
@@ -272,16 +289,17 @@
     }
 
     $('#benchmarkTitle').textContent = '夹链袋供应商报价成本占比';
-    $('#benchmarkDescription').textContent = '按单筋条/双筋条、印刷色数、厚度和展开尺寸匹配历史报价；小规格使用对应尺寸占比。';
+    $('#benchmarkDescription').textContent = `按${zipperPackagingSelect.value === 'box' ? '盒装' : '袋装'}样本，并按筋条数、印刷色数、厚度和展开尺寸匹配历史报价；小规格使用对应尺寸占比。`;
     $('#benchmarkTableHead').innerHTML = '<tr><th>规格</th><th>厚度</th><th>筋条</th><th>印刷</th><th>包装规格</th><th>供应商报价（USD/包装单位）</th><th>表内成本（USD/包装单位）</th><th class="ratio-heading">成本占比</th></tr>';
-    $('#benchmarkNote').textContent = '成本占比 = 表内成本 ÷ 供应商报价。参照报价按筋条数与印刷色数分组，按厚度及袋展开面积插值；尺寸或厚度超出样本范围时采用边界样本。历史样本同时包含袋装和盒装。';
+    $('#benchmarkNote').textContent = '成本占比 = 表内成本 ÷ 供应商报价。仅使用所选包装方式的样本，再按筋条数、印刷色数、厚度及袋展开面积插值；尺寸或厚度超出样本范围时采用边界样本。';
     $('#medianRatioLabel').textContent = '当前匹配占比';
-    $('#meanRatioLabel').textContent = '全样本中位数';
+    $('#meanRatioLabel').textContent = zipperPackagingSelect.value === 'box' ? '盒装样本中位数' : '袋装样本中位数';
     $('#sliderStatisticControl').classList.add('hidden');
     $('#oppReferenceMethod').classList.remove('hidden');
-    $('#oppReferenceMethod').textContent = '按筋条数和印刷色数分组，按袋面积及厚度插值；小规格使用对应小规格比例。';
+    $('#oppReferenceMethod').textContent = '按当前包装方式、筋条数和印刷色数分组，再按袋面积及厚度插值；小规格使用对应小规格比例。';
 
-    const samples = ShikeZipper.referenceSamples;
+    const packagingType = zipperPackagingSelect.value === 'box' ? '盒装' : '袋装';
+    const samples = ShikeZipper.referenceSamples.filter((sample) => sample.packagingType === packagingType);
     $('#benchmarkRows').innerHTML = samples.map((sample) => {
       const totalLengthMm = sample.lengthBelowMm + sample.lengthAboveMm + sample.bottomMm;
       const trackLabel = sample.trackCount === 1 ? '单筋条' : '双筋条';
@@ -307,8 +325,9 @@
       ...inputs,
       trackCount: Number($('[data-choice-field="trackCount"]').value),
       printingColorCount: ShikePrinting.getPrintingColorCount(zipperPrintingSelect.value),
+      packagingType,
     });
-    $('#sampleCount').innerHTML = `${ratios.length} <small>条</small>`;
+    $('#sampleCount').innerHTML = `${estimate.sampleCount} <small>条</small>`;
     $('#medianRatio').textContent = displayRatio(estimate.ratio);
     $('#meanRatio').textContent = displayRatio(median);
     $('#rangeRatio').textContent = `${percent.format(min * 100)}% – ${percent.format(max * 100)}%`;
@@ -318,9 +337,11 @@
   function setCostRows(costs) {
     const sliderKeys = ['body', 'zipper', 'zipperHead', 'printing', 'glue', 'box', 'carton', 'total'];
     const oppKeys = ['body', 'zipper', 'box', 'carton', 'dustBag', 'total'];
-    const zipperKeys = ['body', 'zipper', 'printing', 'glue', 'box', 'carton', 'total'];
+    const zipperKeys = selectedProduct === 'zipper'
+      ? ['body', 'zipper', 'printing', 'carton', 'total', ...(zipperPackagingSelect.value === 'box' ? ['glue', 'box'] : ['packagingBag', 'dustBag'])]
+      : [];
     const visibleKeys = selectedProduct === 'slider' ? sliderKeys : selectedProduct === 'opp' ? oppKeys : zipperKeys;
-    for (const key of [...new Set([...sliderKeys, ...oppKeys])]) {
+    for (const key of [...new Set([...sliderKeys, ...oppKeys, ...zipperKeys])]) {
       const target = $(`[data-cost="${key}"]`);
       if (target) {
         target.textContent = displayNumber(costs?.[key]);
@@ -361,10 +382,13 @@
       ? '当前成本根据已提供的滑块袋公式计算，包含原料、包装物、印刷和打胶成本；暂未计入人工、水电、房租及其他制造费用。'
       : opp
         ? 'OPP/CPP 按已提供的膜重、胶条及包装公式计算，包含材料与包装成本；暂未计入人工、水电、房租及其他制造费用。参照样本目前仅覆盖 OPP。'
-        : '夹链袋重量按单筋条/双筋条实测统计样本拟合，成本按原表 90% 袋本体、10% 夹链分摊；暂未计入人工、水电、房租及其他制造费用。';
+        : '夹链袋重量按单筋条/双筋条实测统计样本拟合；夹链占比默认 10%，袋本体占比按剩余比例计算。包装成本按盒装或袋装方式分摊；暂未计入人工、水电、房租及其他制造费用。';
     $('#bodyCostLabel').textContent = opp ? 'OPP/CPP 膜原料' : '袋本体原料';
     $('#zipperCostLabel').textContent = slider ? '拉链条原料' : opp ? '胶条成本' : '夹链原料';
     $('#boxCostLabel').textContent = opp ? '包装袋分摊' : '彩盒分摊';
+    $('#packagingBagCostLabel').textContent = '包装袋分摊';
+    $('#dustBagCostLabel').textContent = '防尘袋分摊';
+    $('#cartonCostLabel').textContent = opp || zipper ? '纸箱分摊' : '外箱分摊';
     if (zipper) {
       const colors = Number(zipperPrintingSelect.value);
       $('#printingCostLabel').textContent = colors === 0 ? '印刷（无）' : `印刷（${['', '一色', '二色'][colors]}：水墨 + 印刷版）`;
@@ -375,7 +399,7 @@
       ? '包含包装及加工辅料，不含制造费用'
       : opp
         ? '包含薄膜、胶条及包装分摊，不含制造费用'
-        : '包含原料、印刷及盒装分摊，不含制造费用';
+        : `包含原料、印刷及${zipperPackagingSelect.value === 'box' ? '盒装' : '袋装'}分摊，不含制造费用`;
     if (opp) {
       $('#oppBottomLength').disabled = $('[data-choice-field="hasBottom"]').value !== 'yes';
       $('#oppLidLength').disabled = $('[data-choice-field="hasTape"]').value !== 'yes';
@@ -404,7 +428,10 @@
   function render() {
     updateProductContext();
     if (selectedProduct === 'slider') updatePrintingControls();
-    if (selectedProduct === 'zipper') updateZipperPrintingControls();
+    if (selectedProduct === 'zipper') {
+      updateZipperPrintingControls();
+      updateZipperPackagingControls();
+    }
     const inputs = readInputs();
     const statistics = updateBenchmarks(inputs);
     const issues = validate(inputs);
@@ -450,6 +477,7 @@
       costs = ShikeZipper.calculateCosts({
         ...inputs,
         trackCount: Number($('[data-choice-field="trackCount"]').value),
+        packagingMethod: zipperPackagingSelect.value,
       }, ShikePrinting.getPrintingColorCount(zipperPrintingSelect.value));
     }
     setCostRows(costs);
@@ -468,7 +496,8 @@
           referenceUnavailableMessage = 'CPP 当前没有对应的供应商报价样本，参照报价暂不可用；可切换自由报价。';
           rule = 'CPP 暂无供应商报价样本，暂不能使用参照报价。';
         } else if (selectedProduct === 'zipper') {
-          referenceUnavailableMessage = '当前筋条数量或印刷色数没有匹配的供应商报价样本，参照报价暂不可用；可切换自由报价。';
+          const packagingType = zipperPackagingSelect.value === 'box' ? '盒装' : '袋装';
+          referenceUnavailableMessage = `当前${packagingType}、筋条数量或印刷色数组合没有匹配的供应商报价样本，参照报价暂不可用；可切换自由报价。`;
           rule = '当前夹链袋规格没有可用的匹配报价样本。';
         } else {
           referenceUnavailableMessage = '当前厚度或胶条状态没有匹配的供应商报价样本，参照报价暂不可用；可切换自由报价。';
@@ -523,7 +552,7 @@
       ? `滑块袋 ${inputs.lengthMm}×${inputs.widthMm}mm · 插底 ${inputs.bottomMm}mm · ${$('[data-choice-field="packagingMethod"]').value} · ${$('[data-choice-field="zipperColor"]').value}`
       : selectedProduct === 'opp'
         ? `${$('[data-choice-field="filmType"]').value}袋 ${inputs.lengthMm}×${inputs.widthMm}mm · ${Math.round(inputs.thicknessMm * 1000)}μ · 插底${$('[data-choice-field="hasBottom"]').value === 'yes' ? `${inputs.bottomMm}mm` : '无'} · 胶条${$('[data-choice-field="hasTape"]').value === 'yes' ? '有' : '无'} · ${$('[data-choice-field="oppPackagingMethod"]').value}`
-        : `夹链袋 ${inputs.widthMm}×${inputs.lengthBelowMm + inputs.lengthAboveMm + inputs.bottomMm}mm · 筋条${Number($('[data-choice-field="trackCount"]').value) === 1 ? '单' : '双'}条 · ${Math.round(inputs.thicknessMm * 1000)}μ`;
+        : `夹链袋 ${inputs.widthMm}×${inputs.lengthBelowMm + inputs.lengthAboveMm + inputs.bottomMm}mm · 筋条${Number($('[data-choice-field="trackCount"]').value) === 1 ? '单' : '双'}条 · ${Math.round(inputs.thicknessMm * 1000)}μ · ${zipperPackagingSelect.value === 'box' ? '盒装' : '袋装'}`;
     const summary = [
       `世科报价 · ${productDescription}`,
       `策略：${strategyLabel}`,
